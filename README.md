@@ -5,8 +5,8 @@ ___
 
 ## Running
 
-running `make` should create a file called `acs` which you can run with
-`acs <input file>` where `<input file>` is of the form specified in p2.pdf.
+running `make` should create a file called `ACS` which you can run with
+`ACS <input file>` where `<input file>` is of the form specified in p2.pdf.
 
 ## A Note on Timings
 
