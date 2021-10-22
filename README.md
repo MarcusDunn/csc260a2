@@ -1,7 +1,6 @@
 # ACS
 
 An airport queue simulator
-___
 
 ## Running
 
