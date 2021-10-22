@@ -206,6 +206,7 @@ void *acs_clerk_worker(void *arg) {
     int id = clerkInfo->clerk_id;
     printf("clerk %d started working!\n", id);
     for (;;) {
+    	acs_e_pthread_mutex_lock(syncQueues->queues_mutex);
         while (syncQueues->econ_queue_tail == syncQueues->econ_queue_head &&
                syncQueues->buis_queue_tail == syncQueues->buis_queue_head) {
             acs_e_pthread_cond_wait(syncQueues->queues_condvar, syncQueues->queues_mutex);
