@@ -526,7 +526,7 @@ Customer **acs_parse_input(char *input) {
         Customer **customers = (Customer **) acs_e_alloc(sizeof(Customer *) * total_number_of_customers);
         char *line = NULL;
         int i = 0;
-        while ((line = strtok_r(NULL, "\n", &save_ptr)) != NULL) {
+        while ((line = strtok_r(NULL, "\n", &save_ptr)) != NULL && i < total_number_of_customers) {
             Customer *customer = acs_parse_line(line);
             if (customer == NULL) {
                 printf("failed to parse a customer %s\n", line);
