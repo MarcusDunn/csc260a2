@@ -321,7 +321,7 @@ void acs_run_sim(Customer **customers) {
         int *thread_return = &bad_exit;
         int pthread_join_result = pthread_join(customer_threads[i],  (void **) &thread_return);
         if (pthread_join_result != 0 || thread_return != 0) {
-            printf("something went poorly when exiting customer thread %d: %d, %d\n", i, pthread_join_result, thread_return);
+            printf("something went poorly when exiting customer thread %d: %d, %d\n", i, pthread_join_result, *thread_return);
         } else {
             printf("successfully exited customer thread %d\n", i);
         }
@@ -337,7 +337,7 @@ void acs_run_sim(Customer **customers) {
         int *thread_return = &bad_exit;
         int pthread_join_result = pthread_join(clerk_threads[i], (void **) &thread_return);
         if (pthread_join_result != 0 || thread_return != 0) {
-            printf("something went poorly when exiting clerk thread %d: %d, %d\n", clerks[i].clerk_id, pthread_join_result, thread_return);
+            printf("something went poorly when exiting clerk thread %d: %d, %d\n", clerks[i].clerk_id, pthread_join_result, *thread_return);
         } else {
             printf("successfully exited thread %d\n", clerks[i].clerk_id);
         }
