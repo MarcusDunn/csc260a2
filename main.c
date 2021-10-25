@@ -178,6 +178,8 @@ Customer **acs_parse_input(char *input);
  */
 void acs_free_customer_array(Customer **customers);
 
+void *customer_timer(void *arg);
+
 /**
  * entry point, expects a single argument to a correctly formatted text file
  * @return 0 on success. an error message and 1 on failure.
@@ -275,6 +277,11 @@ void acs_e_pthread_cond_wait(pthread_cond_t *condvar, pthread_mutex_t *mutex) {
     }
 }
 
+typedef struct CustomerInfo {
+    Customer *customer;
+    SyncQueues *syncQueues;
+} CustomerInfo;
+
 void acs_run_sim(Customer **customers) {
     pthread_mutex_t sync_queue_mutex;
     pthread_cond_t sync_queue_condvar;
@@ -297,33 +304,27 @@ void acs_run_sim(Customer **customers) {
         }
     }
 
-    long current_time_millis = 0;
-
     // Simulation actually starts here
     long long int start_time = acs_get_timestamp_millis();
 
+    pthread_t customer_threads[total_number_of_customers];
+    CustomerInfo customer_info[total_number_of_customers];
     for (int i = 0; i < total_number_of_customers; ++i) {
         Customer *customer = customers[i];
-        if (customer->arrival_time_millis > current_time_millis) {
-            // wait, increment the current time
-            long wait_time_millis = customer->arrival_time_millis - current_time_millis;
-            usleep(wait_time_millis * 1000);
-            current_time_millis = customer->arrival_time_millis;
-        }
-        printf("customer %ld has entered the %s queue\n", customer->id,
-               customer->class == Business ? "Business" : "Economy");
-        acs_e_pthread_mutex_lock(&sync_queue_mutex);
-        if (customer->class == Business) {
-            sync_queues.buis_queue[sync_queues.buis_queue_head++] = customer;
-        } else if (customer->class == Economy) {
-            sync_queues.econ_queue[sync_queues.econ_queue_head++] = customer;
+        customer_info[i].syncQueues = &sync_queues;
+        customer_info[i].customer = customer;
+        pthread_create(&customer_threads[i], NULL, customer_timer, &customer_info[i]);
+    }
+
+    for (int i = 0; i < total_number_of_customers; ++i) {
+        int bad_exit = -1;
+        int *thread_return = &bad_exit;
+        int pthread_join_result = pthread_join(customer_threads[i],  (void **) &thread_return);
+        if (pthread_join_result != 0 || thread_return != 0) {
+            printf("something went poorly when exiting customer thread %d: %d, %d\n", i, pthread_join_result, thread_return);
         } else {
-            printf("Invalid customer class for customer %ld\n", customer->id);
-            exit(1); // let OS handle this mess :)
+            printf("successfully exited customer thread %d\n", i);
         }
-        acs_e_pthread_cond_signal(&sync_queue_condvar);
-        // ready for someone to grab a customer!
-        acs_e_pthread_mutex_unlock(&sync_queue_mutex);
     }
 
     long long int business_wait_time_millis = 0;
@@ -332,10 +333,13 @@ void acs_run_sim(Customer **customers) {
     int economy_customers_served = 0;
 
     for (int i = 0; i < NUM_CLERKS; ++i) {
-        int thread_return = -1;
+        int bad_exit = -1;
+        int *thread_return = &bad_exit;
         int pthread_join_result = pthread_join(clerk_threads[i], (void **) &thread_return);
         if (pthread_join_result != 0 || thread_return != 0) {
-            printf("something went poorly when exiting the thread: %d, %d\n", pthread_join_result, thread_return);
+            printf("something went poorly when exiting clerk thread %d: %d, %d\n", clerks[i].clerk_id, pthread_join_result, thread_return);
+        } else {
+            printf("successfully exited thread %d\n", clerks[i].clerk_id);
         }
 
         // these are safe to access as the only thread that modifies them we just joined!
@@ -365,6 +369,28 @@ void acs_run_sim(Customer **customers) {
     }
     free(sync_queues.econ_queue);
     free(sync_queues.buis_queue);
+}
+
+void *customer_timer(void *arg) {
+    CustomerInfo *customer_info = (CustomerInfo *) arg;
+    Customer *customer = customer_info->customer;
+    usleep(customer_info->customer->arrival_time_millis * 1000);
+    printf("customer %ld has entered the %s queue\n", customer->id,
+           customer->class == Business ? "Business" : "Economy");
+    SyncQueues *sync_queues = customer_info->syncQueues;
+    acs_e_pthread_mutex_lock(sync_queues->queues_mutex);
+    if (customer->class == Business) {
+        (*sync_queues).buis_queue[(*sync_queues).buis_queue_head++] = customer;
+    } else if (customer->class == Economy) {
+        (*sync_queues).econ_queue[(*sync_queues).econ_queue_head++] = customer;
+    } else {
+        printf("Invalid customer class for customer %ld\n", customer->id);
+        exit(1); // let OS handle this mess :)
+    }
+    acs_e_pthread_cond_signal(sync_queues->queues_condvar);
+    // ready for someone to grab a customer!
+    acs_e_pthread_mutex_unlock(sync_queues->queues_mutex);
+    pthread_exit(0);
 }
 
 void acs_print_stats(long long int business_wait_time_millis, long long int economy_wait_time_millis,
