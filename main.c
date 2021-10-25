@@ -479,8 +479,9 @@ char *acs_read_to_string(FILE *file) {
     fseek(file, 0L, SEEK_END);
     long bytes = ftell(file);
     fseek(file, 0L, SEEK_SET);
-    char *contents = (char *) acs_e_alloc(bytes * sizeof(char));
+    char *contents = (char *) acs_e_alloc(bytes * sizeof(char) + 1);
     fread(contents, sizeof(char), bytes, file);
+    contents[bytes] = '\0';
     return contents;
 }
 
