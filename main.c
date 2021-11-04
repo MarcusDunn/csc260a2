@@ -208,7 +208,7 @@ void *acs_clerk_worker(void *arg) {
     int id = clerkInfo->clerk_id;
     printf("clerk %d started working!\n", id);
     for (;;) {
-    	acs_e_pthread_mutex_lock(syncQueues->queues_mutex);
+        acs_e_pthread_mutex_lock(syncQueues->queues_mutex);
         while (syncQueues->econ_queue_tail == syncQueues->econ_queue_head &&
                syncQueues->buis_queue_tail == syncQueues->buis_queue_head) {
             acs_e_pthread_cond_wait(syncQueues->queues_condvar, syncQueues->queues_mutex);
@@ -319,9 +319,10 @@ void acs_run_sim(Customer **customers) {
     for (int i = 0; i < total_number_of_customers; ++i) {
         int bad_exit = -1;
         int *thread_return = &bad_exit;
-        int pthread_join_result = pthread_join(customer_threads[i],  (void **) &thread_return);
+        int pthread_join_result = pthread_join(customer_threads[i], (void **) &thread_return);
         if (pthread_join_result != 0 || thread_return != 0) {
-            printf("something went poorly when exiting customer thread %d: %d, %d\n", i, pthread_join_result, *thread_return);
+            printf("something went poorly when exiting customer thread %d: %d, %d\n", i, pthread_join_result,
+                   *thread_return);
         }
     }
 
@@ -335,7 +336,8 @@ void acs_run_sim(Customer **customers) {
         int *thread_return = &bad_exit;
         int pthread_join_result = pthread_join(clerk_threads[i], (void **) &thread_return);
         if (pthread_join_result != 0 || thread_return != 0) {
-            printf("something went poorly when exiting clerk thread %d: %d, %d\n", clerks[i].clerk_id, pthread_join_result, *thread_return);
+            printf("something went poorly when exiting clerk thread %d: %d, %d\n", clerks[i].clerk_id,
+                   pthread_join_result, *thread_return);
         }
 
         // these are safe to access as the only thread that modifies them we just joined!
@@ -389,8 +391,12 @@ void *customer_timer(void *arg) {
     pthread_exit(0);
 }
 
-void acs_print_stats(long long int business_wait_time_millis, long long int economy_wait_time_millis,
-                     int business_customers_served, int economy_customers_served) {
+void acs_print_stats(
+        long long int business_wait_time_millis,
+        long long int economy_wait_time_millis,
+        int business_customers_served,
+        int economy_customers_served
+) {
     int total_customers_served = business_customers_served + economy_customers_served;
     if (total_customers_served != total_number_of_customers) {
         printf("something has gone horrid!\n");
@@ -460,7 +466,7 @@ void *acs_e_alloc(size_t size) {
 
 char *acs_get_file_from_args(int argc, char **argv) {
     if (argc != 2) {
-        printf("incorrect number of arguments\n");
+        printf("incorrect number of arguments input file should be passed\n");
         exit(1);
     } else {
         char *file_name = argv[1];
@@ -481,11 +487,13 @@ char *acs_read_to_string(FILE *file) {
     fseek(file, 0L, SEEK_SET);
     char *contents = (char *) acs_e_alloc(bytes * sizeof(char) + 1);
     fread(contents, sizeof(char), bytes, file);
+    // I think fread doesn't null terminate. I do it for them just to be sure.
     contents[bytes] = '\0';
     return contents;
 }
 
 Customer *acs_parse_line(char *line) {
+    // a copy of the line for better error messages before strtok takes *line to town
     char unmodified_line[1000] = {0};
     strcpy(unmodified_line, line);
     errno = 0;
@@ -542,7 +550,7 @@ int acs_cmp_customers_by_arrival_time(const void *c1, const void *c2) {
 Customer **acs_parse_input(char *input) {
     char *save_ptr, *end_ptr = NULL;
     char *customer_number_string = strtok_r(input, "\n", &save_ptr);
-    errno = 0;
+    errno = 0; // set now incase it was set earlier
     total_number_of_customers = strtol(customer_number_string, &end_ptr, 10);
     if (errno == 0 && end_ptr != customer_number_string) {
         // nice little array of pointers to customers, we love C.
